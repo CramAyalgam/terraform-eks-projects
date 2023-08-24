@@ -1,0 +1,7 @@
+.terraform
+*.pem
+terraform.*
+.terraform.*
+
+notes.txt
+*.auto.tfvars

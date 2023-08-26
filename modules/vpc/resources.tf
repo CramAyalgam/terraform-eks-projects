@@ -135,31 +135,31 @@ resource "aws_security_group" "base" {
 
 }
 
-resource "aws_route_table" "rds" {
-  vpc_id = aws_vpc.main.id
+# resource "aws_route_table" "rds" {
+#   vpc_id = aws_vpc.main.id
 
-  tags = {
-    Name: "${var.prefix_tag_name}-rds"
-  }
-}
+#   tags = {
+#     Name: "${var.prefix_tag_name}-rds"
+#   }
+# }
 
-resource "aws_route_table_association" "rds" {
-  for_each = var.rds_subnets
+# resource "aws_route_table_association" "rds" {
+#   for_each = var.rds_subnets
 
-  subnet_id = aws_subnet.rds[each.key].id
-  route_table_id = aws_route_table.rds.id
-}
+#   subnet_id = aws_subnet.rds[each.key].id
+#   route_table_id = aws_route_table.rds.id
+# }
 
-resource "aws_subnet" "rds" {
-  for_each = var.rds_subnets
+# resource "aws_subnet" "rds" {
+#   for_each = var.rds_subnets
 
-  availability_zone = "${var.region}${each.key}"
-  cidr_block = each.value
-  vpc_id = aws_vpc.main.id
+#   availability_zone = "${var.region}${each.key}"
+#   cidr_block = each.value
+#   vpc_id = aws_vpc.main.id
 
-  map_public_ip_on_launch = false
+#   map_public_ip_on_launch = false
 
-  tags = {
-    Name: "${var.prefix_tag_name}-rds-${each.key}"
-  }
-}
+#   tags = {
+#     Name: "${var.prefix_tag_name}-rds-${each.key}"
+#   }
+# }

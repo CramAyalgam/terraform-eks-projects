@@ -16,10 +16,10 @@ module "vpc" {
     a: "${var.vpc_cidr_range}.11.0/24"
     b: "${var.vpc_cidr_range}.12.0/24"
   }
-  rds_subnets = {
-    a: "${var.vpc_cidr_range}.21.0/24"
-    b: "${var.vpc_cidr_range}.23.0/24"
-  }
+  # rds_subnets = {
+  #   a: "${var.vpc_cidr_range}.21.0/24"
+  #   b: "${var.vpc_cidr_range}.23.0/24"
+  # }
 }
 
 # module "eks_bastion" {

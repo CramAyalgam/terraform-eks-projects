@@ -317,9 +317,6 @@ resource "aws_iam_role_policy_attachment" "irsa_iam_role_policy_attach" {
   role       = aws_iam_role.irsa_iam_role.name
 }
 
-
-
-
 ###########################################################
 #          EKS Load balancer                 
 ###########################################################
@@ -442,23 +439,128 @@ resource "kubernetes_ingress_class_v1" "ingress_class_default" {
 # 2. Setting the ingressclass.kubernetes.io/is-default-class annotation to true on an IngressClass resource will ensure that new Ingresses without an ingressClassName field specified will be assigned this default IngressClass.  
 # 3. Reference: https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.3/guide/ingress/ingress_class/
 
+###########################################################
+#          Kubernetes Ingress controller Manifest
+###########################################################
 
+# Kubernetes Service Manifest (Type: Load Balancer)
+resource "kubernetes_ingress_v1" "ingress" {
+  metadata {
+    name = "ingress-basics"
+    annotations = {
+      # Load Balancer Name
+      "alb.ingress.kubernetes.io/load-balancer-name" = "ingress-basics"
+      # Ingress Core Settings
+      "alb.ingress.kubernetes.io/scheme" = "internet-facing"
+      # Health Check Settings
+      "alb.ingress.kubernetes.io/healthcheck-protocol" =  "HTTP"
+      "alb.ingress.kubernetes.io/healthcheck-port" = "traffic-port"
+      #Important Note:  Need to add health check path annotations in service level if we are planning to use multiple targets in a load balancer    
+      "alb.ingress.kubernetes.io/healthcheck-path" =  "/index.html"
+      "alb.ingress.kubernetes.io/healthcheck-interval-seconds" = 15
+      "alb.ingress.kubernetes.io/healthcheck-timeout-seconds" = 5
+      "alb.ingress.kubernetes.io/success-codes" = 200
+      "alb.ingress.kubernetes.io/healthy-threshold-count" = 2
+      "alb.ingress.kubernetes.io/unhealthy-threshold-count" = 2
+    }    
+  }
+
+  spec {
+    ingress_class_name = "my-aws-ingress-class" # Ingress Class            
+    default_backend {
+      service {
+        name = kubernetes_service_v1.myapp3_np_service.metadata[0].name
+        port {
+          number = 80
+        }
+      }
+    }
+  }
+}
+
+###########################################################
+#          Kubernetes Node Port Service            
+###########################################################
+
+# Kubernetes Service Manifest (Type: Node Port Service)
+resource "kubernetes_service_v1" "myapp3_np_service" {
+  metadata {
+    name = "app3-nginx-nodeport-service"
+    annotations = {
+      #Important Note:  Need to add health check path annotations in service level if we are planning to use multiple targets in a load balancer    
+      #"alb.ingress.kubernetes.io/healthcheck-path" = "/index.html"
+    }    
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment_v1.myapp3.spec.0.selector.0.match_labels.app
+    }
+    port {
+      name        = "http"
+      port        = 80
+      target_port = 80
+    }
+    type = "NodePort"
+  }
+}
 
 
 ###########################################################
-#          EKS Kubernetes SA                     
+#          Kubernetes Sample App Deployment          
+###########################################################
+
+# Kubernetes Deployment Manifest
+resource "kubernetes_deployment_v1" "myapp3" {
+  metadata {
+    name = "app3-nginx-deployment"
+    labels = {
+      app = "app3-nginx"
+    }
+  } 
+ 
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "app3-nginx"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "app3-nginx"
+        }
+      }
+
+      spec {
+        container {
+          image = "stacksimplify/kubenginx:1.0.0"
+          name  = "app3-nginx"
+          port {
+            container_port = 80
+          }
+          }
+        }
+      }
+    }
+}
+
+###########################################################
+#          Kubernetes SA                     
 ###########################################################
 
 # Resource: Kubernetes Service Account
-resource "kubernetes_service_account_v1" "irsa_demo_sa" {
-  depends_on = [ aws_iam_role_policy_attachment.irsa_iam_role_policy_attach ]
-  metadata {
-    name = "irsa-demo-sa"
-    annotations = {
-      "eks.amazonaws.com/role-arn" = aws_iam_role.irsa_iam_role.arn
-      }
-  }
-}
+# resource "kubernetes_service_account_v1" "irsa_demo_sa" {
+#   depends_on = [ aws_iam_role_policy_attachment.irsa_iam_role_policy_attach ]
+#   metadata {
+#     name = "irsa-demo-sa"
+#     annotations = {
+#       "eks.amazonaws.com/role-arn" = aws_iam_role.irsa_iam_role.arn
+#       }
+#   }
+# }
 
 ###########################################################
 #          Kubernetes Sample job

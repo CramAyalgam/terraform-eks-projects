@@ -36,9 +36,9 @@ variable "private_subnets" {
   type = map(string)
 }
 
-variable "rds_subnets" {
-  type = map(string)
-}
+# variable "rds_subnets" {
+#   type = map(string)
+# }
 
 variable "cluster_name" {
   type = string

@@ -34,6 +34,11 @@ module "vpc" {
 
 # }
 
+# module "acm" {
+#   domain_name = "oncloud.ae"
+#   subject_alternative_names = ["*.oncloud.ae"]
+# }
+
 module "eks" {
   source = "./modules/eks"
   cluster_name = var.cluster_name
@@ -54,6 +59,7 @@ module "eks" {
 
   region = var.region
 
+  acm_arn = "arn:aws:acm:me-central-1:038540414823:certificate/fb54f9aa-d161-440f-ac32-99aa27e10e54"
 }
 
 

@@ -204,10 +204,10 @@ resource "aws_eks_node_group" "eks_ng_private" {
     Name = "Private-Node-Group"
   }
 }
+
 ###########################################################
 #          EKS Providers                 
 ###########################################################
-
 
 # Terraform Kubernetes Provider
 provider "kubernetes" {
@@ -216,13 +216,6 @@ provider "kubernetes" {
   token = data.aws_eks_cluster_auth.cluster.token
 }
 
-provider "helm" {
-  kubernetes {
-    host                   = aws_eks_cluster.main.endpoint
-    cluster_ca_certificate = base64decode(aws_eks_cluster.main.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.cluster.token
-  }
-}
 
 
 ###########################################################
@@ -283,39 +276,39 @@ aws_iam_openid_connect_provider_extract_from_arn = "oidc.eks.us-east-1.amazonaws
 
 # Resource: Create IAM Role and associate the EBS IAM Policy to it
 
-resource "aws_iam_role" "irsa_iam_role" {
-  name = "${var.prefix_tag_name}-irsa-iam-role"
+# resource "aws_iam_role" "irsa_iam_role" {
+#   name = "${var.prefix_tag_name}-irsa-iam-role"
 
-  # Terraform's "jsonencode" function converts a Terraform expression result to valid JSON syntax.
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Effect = "Allow"
-        Sid    = ""
-        Principal = {
-          Federated = aws_iam_openid_connect_provider.oidc_provider.arn
-        }
-        Condition = {
-          StringEquals = {            
-            "${local.aws_iam_oidc_connect_provider_extract_from_arn}:sub": "system:serviceaccount:default:irsa-demo-sa"
-          }
-        }        
-      },
-    ]
-  })
+#   # Terraform's "jsonencode" function converts a Terraform expression result to valid JSON syntax.
+#   assume_role_policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Action = "sts:AssumeRoleWithWebIdentity"
+#         Effect = "Allow"
+#         Sid    = ""
+#         Principal = {
+#           Federated = aws_iam_openid_connect_provider.oidc_provider.arn
+#         }
+#         Condition = {
+#           StringEquals = {            
+#             "${local.aws_iam_oidc_connect_provider_extract_from_arn}:sub": "system:serviceaccount:default:irsa-demo-sa"
+#           }
+#         }        
+#       },
+#     ]
+#   })
 
-  tags = {
-    tag-key = "${var.prefix_tag_name}-irsa-iam-role"
-  }
-}
+#   tags = {
+#     tag-key = "${var.prefix_tag_name}-irsa-iam-role"
+#   }
+# }
 
-# Associate IAM Role and Policy
-resource "aws_iam_role_policy_attachment" "irsa_iam_role_policy_attach" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-  role       = aws_iam_role.irsa_iam_role.name
-}
+# # Associate IAM Role and Policy
+# resource "aws_iam_role_policy_attachment" "irsa_iam_role_policy_attach" {
+#   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+#   role       = aws_iam_role.irsa_iam_role.name
+# }
 
 ###########################################################
 #          EKS Load balancer                 
@@ -369,382 +362,31 @@ resource "aws_iam_role_policy_attachment" "lbc_iam_role_policy_attach" {
 #          EKS AWS Load Balancer Install
 ###########################################################
 
-# Install AWS Load Balancer Controller using HELM
+module "ingress-controller" {
+  source = "./subs/ingress-controller"
+  # depends_on = [aws_iam_role.lbc_iam_role]  
 
-# Resource: Helm Release 
-resource "helm_release" "loadbalancer_controller" {
-  depends_on = [aws_iam_role.lbc_iam_role]            
-  name       = "aws-load-balancer-controller"
+  vpc_id = var.vpc_id
+  region = var.region
 
-  repository = "https://aws.github.io/eks-charts"
-  chart      = "aws-load-balancer-controller"
+  eks_cluster_id = aws_eks_cluster.main.id
 
-  namespace = "kube-system"     
+  lbc_iam_role_arn = aws_iam_role.lbc_iam_role.arn
 
-  # Value changes based on your Region (Below is for me-central-1)
-  set {
-    name = "image.repository"
-    value = "759879836304.dkr.ecr.me-central-1.amazonaws.com/amazon/aws-load-balancer-controller" 
-    # Changes based on Region - This is for us-east-1 Additional Reference: https://docs.aws.amazon.com/eks/latest/userguide/add-ons-images.html
-  }       
+  eks_endpoint = aws_eks_cluster.main.endpoint
 
-  set {
-    name  = "serviceAccount.create"
-    value = "true"
-  }
-
-  set {
-    name  = "serviceAccount.name"
-    value = "aws-load-balancer-controller"
-  }
-
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = "${aws_iam_role.lbc_iam_role.arn}"
-  }
-
-  set {
-    name  = "vpcId"
-    value = "${var.vpc_id}"
-  }  
-
-  set {
-    name  = "region"
-    value = "${var.region}"
-  }    
-
-  set {
-    name  = "clusterName"
-    value = "${aws_eks_cluster.main.id}"
-  }    
-    
+  ca_data =aws_eks_cluster.main.certificate_authority[0].data
 }
 
-# Resource: Kubernetes Ingress Class
-resource "kubernetes_ingress_class_v1" "ingress_class_default" {
-  depends_on = [helm_release.loadbalancer_controller]
-  metadata {
-    name = "my-aws-ingress-class"
-    annotations = {
-      "ingressclass.kubernetes.io/is-default-class" = "true"
-    }
-  }  
-  spec {
-    controller = "ingress.k8s.aws/alb"
-  }
-}
+module "content-path-routing" {
+  source = "./subs/content-path-routing"
 
-## Additional Note
-# 1. You can mark a particular IngressClass as the default for your cluster. 
-# 2. Setting the ingressclass.kubernetes.io/is-default-class annotation to true on an IngressClass resource will ensure that new Ingresses without an ingressClassName field specified will be assigned this default IngressClass.  
-# 3. Reference: https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.3/guide/ingress/ingress_class/
+  lb_name = "ingress-cpr"
 
-###########################################################
-#          Kubernetes Ingress controller Manifest
-###########################################################
+  acm_arn = var.acm_arn
 
-# Kubernetes Service Manifest (Type: Load Balancer)
-resource "kubernetes_ingress_v1" "ingress" {
-  metadata {
-    name = "ingress-cpr"
-    annotations = {
-      # Load Balancer Name
-      "alb.ingress.kubernetes.io/load-balancer-name" = "ingress-cpr"
-      # Ingress Core Settings
-      "alb.ingress.kubernetes.io/scheme" = "internet-facing"
-      # Health Check Settings
-      "alb.ingress.kubernetes.io/healthcheck-protocol" =  "HTTP"
-      "alb.ingress.kubernetes.io/healthcheck-port" = "traffic-port"
-      #Important Note:  Need to add health check path annotations in service level if we are planning to use multiple targets in a load balancer    
-      "alb.ingress.kubernetes.io/healthcheck-path" =  "/index.html"
-      "alb.ingress.kubernetes.io/healthcheck-interval-seconds" = 15
-      "alb.ingress.kubernetes.io/healthcheck-timeout-seconds" = 5
-      "alb.ingress.kubernetes.io/success-codes" = 200
-      "alb.ingress.kubernetes.io/healthy-threshold-count" = 2
-      "alb.ingress.kubernetes.io/unhealthy-threshold-count" = 2
-    }    
-  }
+  eks_cluster_id = aws_eks_cluster.main.id
+  eks_endpoint = aws_eks_cluster.main.endpoint
+  ca_data =aws_eks_cluster.main.certificate_authority[0].data
+} 
 
-  spec {
-    ingress_class_name = "my-aws-ingress-class" # Ingress Class            
-    default_backend {
-      service {
-        name = kubernetes_service_v1.myapp3_np_service.metadata[0].name
-        port {
-          number = 80
-        }
-      }
-    }
-    rule {
-      http {
-        path {
-          backend {
-            service {
-              name = kubernetes_service_v1.myapp1_np_service.metadata[0].name
-              port {
-                number = 80
-              }
-            }
-          }
-          path = "/app1"
-          path_type = "Prefix"
-        }
-
-        path {
-          backend {
-            service {
-              name = kubernetes_service_v1.myapp2_np_service.metadata[0].name
-              port {
-                number = 80
-              }
-            }
-          }
-          path = "/app2"
-          path_type = "Prefix"
-        }
-      }
-    }
-  }
-}
-
-
-###########################################################
-#   Kubernetes Sample App Deployment - Content Path Routing           
-###########################################################
-
-# Kubernetes Deployment Manifest
-resource "kubernetes_deployment_v1" "myapp1" {
-  metadata {
-    name = "app1-nginx-deployment"
-    labels = {
-      app = "app1-nginx"
-    }
-  } 
- 
-  spec {
-    replicas = 1
-
-    selector {
-      match_labels = {
-        app = "app1-nginx"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app = "app1-nginx"
-        }
-      }
-
-      spec {
-        container {
-          image = "stacksimplify/kube-nginxapp1:1.0.0"
-          name  = "app1-nginx"
-          port {
-            container_port = 80
-          }
-        }
-      }
-    }
-  }
-}
-
-# Kubernetes Deployment Manifest
-resource "kubernetes_deployment_v1" "myapp2" {
-  metadata {
-    name = "app2-nginx-deployment"
-    labels = {
-      app = "app2-nginx"
-    }
-  } 
- 
-  spec {
-    replicas = 1
-
-    selector {
-      match_labels = {
-        app = "app2-nginx"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app = "app2-nginx"
-        }
-      }
-
-      spec {
-        container {
-          image = "stacksimplify/kube-nginxapp2:1.0.0"
-          name  = "app2-nginx"
-          port {
-            container_port = 80
-          }
-        }
-      }
-    }
-  }
-}
-# Kubernetes Deployment Manifest
-resource "kubernetes_deployment_v1" "myapp3" {
-  metadata {
-    name = "app3-nginx-deployment"
-    labels = {
-      app = "app3-nginx"
-    }
-  } 
- 
-  spec {
-    replicas = 1
-
-    selector {
-      match_labels = {
-        app = "app3-nginx"
-      }
-    }
-
-    template {
-      metadata {
-        labels = {
-          app = "app3-nginx"
-        }
-      }
-
-      spec {
-        container {
-          image = "stacksimplify/kubenginx:1.0.0"
-          name  = "app3-nginx"
-          port {
-            container_port = 80
-          }
-        }
-      }
-    }
-  }
-}
-
-###########################################################
-# Kubernetes Node Port Service - Conten Path Routing
-###########################################################
-
-# Kubernetes Service Manifest (Type: Node Port Service)
-resource "kubernetes_service_v1" "myapp1_np_service" {
-  metadata {
-    name = "app1-nginx-nodeport-service"
-    annotations = {
-      "alb.ingress.kubernetes.io/healthcheck-path" = "/app1/index.html"
-    }
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment_v1.myapp1.spec.0.selector.0.match_labels.app
-    }
-    port {
-      name        = "http"
-      port        = 80
-      target_port = 80
-    }
-    type = "NodePort"
-  }
-}
-
-# Kubernetes Service Manifest (Type: Node Port Service)
-resource "kubernetes_service_v1" "myapp2_np_service" {
-  metadata {
-    name = "app2-nginx-nodeport-service"
-    annotations = {
-      "alb.ingress.kubernetes.io/healthcheck-path" = "/app2/index.html"
-    }    
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment_v1.myapp2.spec.0.selector.0.match_labels.app
-    }
-    port {
-      name        = "http"
-      port        = 80
-      target_port = 80
-    }
-    type = "NodePort"
-  }
-}
-
-resource "kubernetes_service_v1" "myapp3_np_service" {
-  metadata {
-    name = "app3-nginx-nodeport-service"
-    annotations = {
-      #Important Note:  Need to add health check path annotations in service level if we are planning to use multiple targets in a load balancer    
-      #"alb.ingress.kubernetes.io/healthcheck-path" = "/index.html"
-    }    
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment_v1.myapp3.spec.0.selector.0.match_labels.app
-    }
-    port {
-      name        = "http"
-      port        = 80
-      target_port = 80
-    }
-    type = "NodePort"
-  }
-}
-
-###########################################################
-#          Kubernetes Sample App Deployment          
-###########################################################
-/*
-
-*/
-###########################################################
-#          Kubernetes SA                     
-###########################################################
-
-# Resource: Kubernetes Service Account
-# resource "kubernetes_service_account_v1" "irsa_demo_sa" {
-#   depends_on = [ aws_iam_role_policy_attachment.irsa_iam_role_policy_attach ]
-#   metadata {
-#     name = "irsa-demo-sa"
-#     annotations = {
-#       "eks.amazonaws.com/role-arn" = aws_iam_role.irsa_iam_role.arn
-#       }
-#   }
-# }
-
-###########################################################
-#          Kubernetes Sample job
-###########################################################
-/*
-Resource: Kubernetes Job
-
-To verify jobs log
-kubectl logs -f -l app=irsa-demo
-kubectl get job
-*/
-
-# resource "kubernetes_job_v1" "irsa_demo" {
-#   metadata {
-#     name = "irsa-demo"
-#   }
-#   spec {
-#     template {
-#       metadata {
-#         labels = {
-#           app = "irsa-demo"
-#         }
-#       }
-#       spec {
-#         service_account_name = kubernetes_service_account_v1.irsa_demo_sa.metadata.0.name 
-#         container {
-#           name    = "irsa-demo"
-#           image   = "amazon/aws-cli:latest"
-#           args = ["s3", "ls"]
-#           #args = ["ec2", "describe-instances", "--region", "${var.aws_region}"] # Should fail as we don't have access to EC2 Describe Instances for IAM Role
-#         }
-#         restart_policy = "Never"
-#       }
-#     }
-#   }
-# }

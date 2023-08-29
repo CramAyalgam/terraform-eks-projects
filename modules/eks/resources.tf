@@ -446,10 +446,10 @@ resource "kubernetes_ingress_class_v1" "ingress_class_default" {
 # Kubernetes Service Manifest (Type: Load Balancer)
 resource "kubernetes_ingress_v1" "ingress" {
   metadata {
-    name = "ingress-basics"
+    name = "ingress-cpr"
     annotations = {
       # Load Balancer Name
-      "alb.ingress.kubernetes.io/load-balancer-name" = "ingress-basics"
+      "alb.ingress.kubernetes.io/load-balancer-name" = "ingress-cpr"
       # Ingress Core Settings
       "alb.ingress.kubernetes.io/scheme" = "internet-facing"
       # Health Check Settings
@@ -475,40 +475,118 @@ resource "kubernetes_ingress_v1" "ingress" {
         }
       }
     }
+    rule {
+      http {
+        path {
+          backend {
+            service {
+              name = kubernetes_service_v1.myapp1_np_service.metadata[0].name
+              port {
+                number = 80
+              }
+            }
+          }
+          path = "/app1"
+          path_type = "Prefix"
+        }
+
+        path {
+          backend {
+            service {
+              name = kubernetes_service_v1.myapp2_np_service.metadata[0].name
+              port {
+                number = 80
+              }
+            }
+          }
+          path = "/app2"
+          path_type = "Prefix"
+        }
+      }
+    }
   }
 }
 
+
 ###########################################################
-#          Kubernetes Node Port Service            
+#   Kubernetes Sample App Deployment - Content Path Routing           
 ###########################################################
 
-# Kubernetes Service Manifest (Type: Node Port Service)
-resource "kubernetes_service_v1" "myapp3_np_service" {
+# Kubernetes Deployment Manifest
+resource "kubernetes_deployment_v1" "myapp1" {
   metadata {
-    name = "app3-nginx-nodeport-service"
-    annotations = {
-      #Important Note:  Need to add health check path annotations in service level if we are planning to use multiple targets in a load balancer    
-      #"alb.ingress.kubernetes.io/healthcheck-path" = "/index.html"
-    }    
-  }
+    name = "app1-nginx-deployment"
+    labels = {
+      app = "app1-nginx"
+    }
+  } 
+ 
   spec {
-    selector = {
-      app = kubernetes_deployment_v1.myapp3.spec.0.selector.0.match_labels.app
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "app1-nginx"
+      }
     }
-    port {
-      name        = "http"
-      port        = 80
-      target_port = 80
+
+    template {
+      metadata {
+        labels = {
+          app = "app1-nginx"
+        }
+      }
+
+      spec {
+        container {
+          image = "stacksimplify/kube-nginxapp1:1.0.0"
+          name  = "app1-nginx"
+          port {
+            container_port = 80
+          }
+        }
+      }
     }
-    type = "NodePort"
   }
 }
 
+# Kubernetes Deployment Manifest
+resource "kubernetes_deployment_v1" "myapp2" {
+  metadata {
+    name = "app2-nginx-deployment"
+    labels = {
+      app = "app2-nginx"
+    }
+  } 
+ 
+  spec {
+    replicas = 1
 
-###########################################################
-#          Kubernetes Sample App Deployment          
-###########################################################
+    selector {
+      match_labels = {
+        app = "app2-nginx"
+      }
+    }
 
+    template {
+      metadata {
+        labels = {
+          app = "app2-nginx"
+        }
+      }
+
+      spec {
+        container {
+          image = "stacksimplify/kube-nginxapp2:1.0.0"
+          name  = "app2-nginx"
+          port {
+            container_port = 80
+          }
+        }
+      }
+    }
+  }
+}
 # Kubernetes Deployment Manifest
 resource "kubernetes_deployment_v1" "myapp3" {
   metadata {
@@ -541,12 +619,85 @@ resource "kubernetes_deployment_v1" "myapp3" {
           port {
             container_port = 80
           }
-          }
         }
       }
     }
+  }
 }
 
+###########################################################
+# Kubernetes Node Port Service - Conten Path Routing
+###########################################################
+
+# Kubernetes Service Manifest (Type: Node Port Service)
+resource "kubernetes_service_v1" "myapp1_np_service" {
+  metadata {
+    name = "app1-nginx-nodeport-service"
+    annotations = {
+      "alb.ingress.kubernetes.io/healthcheck-path" = "/app1/index.html"
+    }
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment_v1.myapp1.spec.0.selector.0.match_labels.app
+    }
+    port {
+      name        = "http"
+      port        = 80
+      target_port = 80
+    }
+    type = "NodePort"
+  }
+}
+
+# Kubernetes Service Manifest (Type: Node Port Service)
+resource "kubernetes_service_v1" "myapp2_np_service" {
+  metadata {
+    name = "app2-nginx-nodeport-service"
+    annotations = {
+      "alb.ingress.kubernetes.io/healthcheck-path" = "/app2/index.html"
+    }    
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment_v1.myapp2.spec.0.selector.0.match_labels.app
+    }
+    port {
+      name        = "http"
+      port        = 80
+      target_port = 80
+    }
+    type = "NodePort"
+  }
+}
+
+resource "kubernetes_service_v1" "myapp3_np_service" {
+  metadata {
+    name = "app3-nginx-nodeport-service"
+    annotations = {
+      #Important Note:  Need to add health check path annotations in service level if we are planning to use multiple targets in a load balancer    
+      #"alb.ingress.kubernetes.io/healthcheck-path" = "/index.html"
+    }    
+  }
+  spec {
+    selector = {
+      app = kubernetes_deployment_v1.myapp3.spec.0.selector.0.match_labels.app
+    }
+    port {
+      name        = "http"
+      port        = 80
+      target_port = 80
+    }
+    type = "NodePort"
+  }
+}
+
+###########################################################
+#          Kubernetes Sample App Deployment          
+###########################################################
+/*
+
+*/
 ###########################################################
 #          Kubernetes SA                     
 ###########################################################

@@ -77,6 +77,12 @@ resource "aws_iam_role_policy_attachment" "eks-AmazonEC2ContainerRegistryReadOnl
   role       = aws_iam_role.eks_nodegroup_role.name
 }
 
+# Autoscaling Full Access
+resource "aws_iam_role_policy_attachment" "eks-Autoscaling-Full-Access" {
+  policy_arn = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
+  role       = aws_iam_role.eks_nodegroup_role.name
+}
+
 ###########################################################
 #          EKS Cluster                 
 ###########################################################
@@ -154,6 +160,9 @@ resource "aws_eks_cluster" "main" {
 
 #   tags = {
 #     Name = "Public-Node-Group"
+    # Cluster Autoscaler Tags
+    #"k8s.io/cluster-autoscaler/${aws_eks_cluster.main.name}" = "owned"
+    #"k8s.io/cluster-autoscaler/enabled" = "TRUE"
 #   }
 # }
 
@@ -202,6 +211,9 @@ resource "aws_eks_node_group" "eks_ng_private" {
   ]  
   tags = {
     Name = "Private-Node-Group"
+    # Cluster Autoscaler Tags
+    "k8s.io/cluster-autoscaler/${aws_eks_cluster.main.name}" = "owned"
+    "k8s.io/cluster-autoscaler/enabled" = "TRUE"
   }
 }
 
@@ -265,50 +277,6 @@ resource "aws_iam_openid_connect_provider" "oidc_provider" {
 aws_iam_openid_connect_provider_arn = "arn:aws:iam::180789647333:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/A9DED4A4FA341C2A5D985A260650F232"
 aws_iam_openid_connect_provider_extract_from_arn = "oidc.eks.us-east-1.amazonaws.com/id/A9DED4A4FA341C2A5D985A260650F232"
 */
-
-###########################################################
-#          EKS IRSA                     
-###########################################################
-
-
-#data.terraform_remote_state.eks.outputs.aws_iam_openid_connect_provider_arn
-#data.terraform_remote_state.eks.outputs.aws_iam_openid_connect_provider_extract_from_arn
-
-# Resource: Create IAM Role and associate the EBS IAM Policy to it
-
-# resource "aws_iam_role" "irsa_iam_role" {
-#   name = "${var.prefix_tag_name}-irsa-iam-role"
-
-#   # Terraform's "jsonencode" function converts a Terraform expression result to valid JSON syntax.
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Action = "sts:AssumeRoleWithWebIdentity"
-#         Effect = "Allow"
-#         Sid    = ""
-#         Principal = {
-#           Federated = aws_iam_openid_connect_provider.oidc_provider.arn
-#         }
-#         Condition = {
-#           StringEquals = {            
-#             "${local.aws_iam_oidc_connect_provider_extract_from_arn}:sub": "system:serviceaccount:default:irsa-demo-sa"
-#           }
-#         }        
-#       },
-#     ]
-#   })
-
-#   tags = {
-#     tag-key = "${var.prefix_tag_name}-irsa-iam-role"
-#   }
-# }
-
-# # Associate IAM Role and Policy
-# resource "aws_iam_role_policy_attachment" "irsa_iam_role_policy_attach" {
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-#   role       = aws_iam_role.irsa_iam_role.name
-# }
 
 ###########################################################
 #          EKS Load balancer                 
@@ -378,6 +346,9 @@ module "ingress-controller" {
   ca_data =aws_eks_cluster.main.certificate_authority[0].data
 }
 
+###########################################################
+#          EKS Ingress Content Path Routing + SSL
+###########################################################
 module "content-path-routing" {
   source = "./subs/content-path-routing"
 
@@ -390,3 +361,25 @@ module "content-path-routing" {
   ca_data =aws_eks_cluster.main.certificate_authority[0].data
 } 
 
+###########################################################
+#          EKS Cluster Auto Scaler
+###########################################################
+
+module "cluster-autoscaler" {
+  source = "./subs/cluster-autoscaler"
+
+  
+aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
+aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
+
+eks_cluster_id = aws_eks_cluster.main.id
+
+region = var.region
+
+prefix_tag_name = var.prefix_tag_name
+
+eks_endpoint = aws_eks_cluster.main.endpoint
+
+ca_data =aws_eks_cluster.main.certificate_authority[0].data
+
+}

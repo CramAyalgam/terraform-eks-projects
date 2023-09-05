@@ -83,3 +83,6 @@ variable "cluster_endpoint_private_access" {
 #   default     = ["0.0.0.0/0"]
 # }
 
+variable "acm_arn" {
+  type = string
+}

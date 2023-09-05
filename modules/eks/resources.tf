@@ -287,7 +287,8 @@ resource "aws_iam_policy" "lbc_iam_policy" {
   name        = "${local.name}-AWSLoadBalancerControllerIAMPolicy"
   path        = "/"
   description = "AWS Load Balancer Controller IAM Policy"
-  policy = data.http.lbc_iam_policy.body
+  #policy = data.http.lbc_iam_policy.body
+  policy = file("modules/eks/iam-policy-controller.json")
 }
 
 # Resource: Create IAM Role 
@@ -386,20 +387,20 @@ module "content-path-routing" {
 #          EKS Ingress + External DNS
 ###########################################################
 
-module "ingress-externaldns" {
-  source = "./subs/ingress-externaldns"
+# module "ingress-externaldns" {
+#   source = "./subs/ingress-externaldns"
 
-  aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
-  aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
+#   aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
+#   aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
 
-  eks_cluster_id = aws_eks_cluster.main.id
-  eks_cluster_name = aws_eks_cluster.main.name
-  region = var.region
+#   eks_cluster_id = aws_eks_cluster.main.id
+#   eks_cluster_name = aws_eks_cluster.main.name
+#   region = var.region
 
-  prefix_tag_name = var.prefix_tag_name
+#   prefix_tag_name = var.prefix_tag_name
 
-  eks_endpoint = aws_eks_cluster.main.endpoint
+#   eks_endpoint = aws_eks_cluster.main.endpoint
 
-  ca_data = aws_eks_cluster.main.certificate_authority[0].data
+#   ca_data = aws_eks_cluster.main.certificate_authority[0].data
 
-}
+# }

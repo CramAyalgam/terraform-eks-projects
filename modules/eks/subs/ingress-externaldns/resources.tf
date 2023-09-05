@@ -75,75 +75,74 @@ resource "aws_iam_role_policy_attachment" "externaldns_iam_role_policy_attach" {
 }
 
 #Resource: Helm Release 
-resource "helm_release" "external_dns" {
-  depends_on = [aws_iam_role.externaldns_iam_role]            
-  name       = "external-dns"
-  #version    = "0.13.1"
-  repository = "https://kubernetes-sigs.github.io/external-dns/"
-  chart      = "external-dns"
+# resource "helm_release" "external_dns" {
+#   depends_on = [aws_iam_role.externaldns_iam_role]            
+#   name       = "external-dns"
+#   #version    = "0.13.1"
+#   repository = "https://kubernetes-sigs.github.io/external-dns/"
+#   chart      = "external-dns"
 
-  namespace = "default"     
+#   namespace = "default"     
 
-  set {
-    name = "image.repository"
-    #value = "k8s.gcr.io/external-dns/external-dns" 
-    value = "registry.k8s.io/external-dns/external-dns"
-  }
+#   set {
+#     name = "image.repository"
+#     #value = "k8s.gcr.io/external-dns/external-dns" 
+#     value = "registry.k8s.io/external-dns/external-dns"
+#   }
 
-  set {
-    name = "image.tag"
-    #value = "k8s.gcr.io/external-dns/external-dns" 
-    value = "v0.13.1"
-  }
+#   set {
+#     name = "image.tag"
+#     #value = "k8s.gcr.io/external-dns/external-dns" 
+#     value = "v0.13.1"
+#   }
 
-  set {
-    name  = "serviceAccount.create"
-    value = "true"
-  }
+#   set {
+#     name  = "serviceAccount.create"
+#     value = "true"
+#   }
 
-  set {
-    name  = "serviceAccount.name"
-    value = "external-dns"
-  }
+#   set {
+#     name  = "serviceAccount.name"
+#     value = "external-dns"
+#   }
 
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = "${aws_iam_role.externaldns_iam_role.arn}"
-  }
+#   set {
+#     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+#     value = "${aws_iam_role.externaldns_iam_role.arn}"
+#   }
 
-  set {
-    name  = "provider" # Default is aws (https://github.com/kubernetes-sigs/external-dns/tree/master/charts/external-dns)
-    value = "aws"
-  }    
+#   set {
+#     name  = "provider" # Default is aws (https://github.com/kubernetes-sigs/external-dns/tree/master/charts/external-dns)
+#     value = "aws"
+#   }    
 
-  set {
-    name  = "policy" # Default is "upsert-only" which means DNS records will not get deleted even equivalent Ingress resources are deleted (https://github.com/kubernetes-sigs/external-dns/tree/master/charts/external-dns)
-    value = "sync"   # "sync" will ensure that when ingress resource is deleted, equivalent DNS record in Route53 will get deleted
-  }
+#   set {
+#     name  = "policy" # Default is "upsert-only" which means DNS records will not get deleted even equivalent Ingress resources are deleted (https://github.com/kubernetes-sigs/external-dns/tree/master/charts/external-dns)
+#     value = "sync"   # "sync" will ensure that when ingress resource is deleted, equivalent DNS record in Route53 will get deleted
+#   }
 
-  set {
-    name  = "txtprefix"
-    value = "test"
-  }
+#   set {
+#     name  = "txtprefix"
+#     value = "test"
+#   }
 
-  set {
-    name  = "txtOwnerId"
-    value = "external-dns"
-  }
+#   set {
+#     name  = "txtOwnerId"
+#     value = "external-dns"
+#   }
 
-  set {
-    name  = "source"
-    value = "service"
-  }
+#   set {
+#     name  = "source"
+#     value = "service"
+#   }
 
-  set {
-    name  = "source"
-    value = "ingress"
-  }
+#   set {
+#     name  = "source"
+#     value = "ingress"
+#   }
 
-  set {
-    name  = "domainFilters"
-    value = "{oncloud.ae}"
-  }
-  
-}
+#   set {
+#     name  = "domainFilters"
+#     value = "{oncloud.ae}"
+#   }
+# }

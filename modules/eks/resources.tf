@@ -332,7 +332,6 @@ resource "aws_iam_role_policy_attachment" "lbc_iam_role_policy_attach" {
 
 module "ingress-controller" {
   source = "./subs/ingress-controller"
-  # depends_on = [aws_iam_role.lbc_iam_role]  
 
   vpc_id = var.vpc_id
   region = var.region
@@ -365,21 +364,42 @@ module "content-path-routing" {
 #          EKS Cluster Auto Scaler
 ###########################################################
 
-module "cluster-autoscaler" {
-  source = "./subs/cluster-autoscaler"
+# module "cluster-autoscaler" {
+#   source = "./subs/cluster-autoscaler"
 
-  
-aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
-aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
+# aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
+# aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
 
-eks_cluster_id = aws_eks_cluster.main.id
+# eks_cluster_id = aws_eks_cluster.main.id
 
-region = var.region
+# region = var.region
 
-prefix_tag_name = var.prefix_tag_name
+# prefix_tag_name = var.prefix_tag_name
 
-eks_endpoint = aws_eks_cluster.main.endpoint
+# eks_endpoint = aws_eks_cluster.main.endpoint
 
-ca_data =aws_eks_cluster.main.certificate_authority[0].data
+# ca_data =aws_eks_cluster.main.certificate_authority[0].data
+
+# }
+
+###########################################################
+#          EKS Ingress + External DNS
+###########################################################
+
+module "ingress-externaldns" {
+  source = "./subs/ingress-externaldns"
+
+  aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
+  aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
+
+  eks_cluster_id = aws_eks_cluster.main.id
+  eks_cluster_name = aws_eks_cluster.main.name
+  region = var.region
+
+  prefix_tag_name = var.prefix_tag_name
+
+  eks_endpoint = aws_eks_cluster.main.endpoint
+
+  ca_data = aws_eks_cluster.main.certificate_authority[0].data
 
 }

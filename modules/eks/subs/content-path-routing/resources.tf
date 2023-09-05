@@ -1,3 +1,13 @@
+# Resource: ACM Certificate
+resource "aws_acm_certificate" "acm_cert" {
+  domain_name       = "*.oncloud.ae"
+  validation_method = "DNS"
+
+  tags = {
+    Environment = "dev"
+  }
+}
+
 ###########################################################
 #          EKS Providers                 
 ###########################################################
@@ -45,10 +55,12 @@ resource "kubernetes_ingress_v1" "ingress" {
       "alb.ingress.kubernetes.io/listen-ports" = jsonencode([{"HTTPS" = 443}, {"HTTP" = 80}])
       # Option-2: Using Terraform File Function      
       #"alb.ingress.kubernetes.io/listen-ports" = file("${path.module}/listen-ports/listen-ports.json")   
-      "alb.ingress.kubernetes.io/certificate-arn" =  var.acm_arn
+      "alb.ingress.kubernetes.io/certificate-arn" =  "${aws_acm_certificate.acm_cert.arn}"
       #"alb.ingress.kubernetes.io/ssl-policy" = "ELBSecurityPolicy-TLS-1-1-2017-01" #Optional (Picks default if not used)    
       # SSL Redirect Setting
       "alb.ingress.kubernetes.io/ssl-redirect" = 443
+      # External DNS - For creating a Record Set in Route53
+      "external-dns.alpha.kubernetes.io/hostname" = "tfdnstest901.oncloud.ae, tfdnstest902.oncloud.ae"
     }    
   }
 

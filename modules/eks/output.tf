@@ -108,3 +108,7 @@ output "lbc_iam_policy" {
 output "lbc_iam_policy_arn" {
   value = aws_iam_policy.lbc_iam_policy.arn 
 }
+
+output "cluster_name" {
+  value = aws_eks_cluster.main.name
+}

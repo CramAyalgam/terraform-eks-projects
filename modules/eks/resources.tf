@@ -331,56 +331,19 @@ resource "aws_iam_role_policy_attachment" "lbc_iam_role_policy_attach" {
 #          EKS AWS Load Balancer Install
 ###########################################################
 
-module "ingress-controller" {
-  source = "./subs/ingress-controller"
+# module "ingress-controller" {
+#   source = "./subs/ingress-controller"
 
-  vpc_id = var.vpc_id
-  region = var.region
+#   vpc_id = var.vpc_id
+#   region = var.region
 
-  eks_cluster_id = aws_eks_cluster.main.id
+#   eks_cluster_id = aws_eks_cluster.main.id
 
-  lbc_iam_role_arn = aws_iam_role.lbc_iam_role.arn
+#   lbc_iam_role_arn = aws_iam_role.lbc_iam_role.arn
 
-  eks_endpoint = aws_eks_cluster.main.endpoint
+#   eks_endpoint = aws_eks_cluster.main.endpoint
 
-  ca_data =aws_eks_cluster.main.certificate_authority[0].data
-}
-
-###########################################################
-#          EKS Ingress Content Path Routing + SSL
-###########################################################
-module "content-path-routing" {
-  source = "./subs/content-path-routing"
-
-  lb_name = "ingress-cpr"
-
-  acm_arn = var.acm_arn
-
-  eks_cluster_id = aws_eks_cluster.main.id
-  eks_endpoint = aws_eks_cluster.main.endpoint
-  ca_data =aws_eks_cluster.main.certificate_authority[0].data
-} 
-
-###########################################################
-#          EKS Cluster Auto Scaler
-###########################################################
-
-# module "cluster-autoscaler" {
-#   source = "./subs/cluster-autoscaler"
-
-# aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
-# aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
-
-# eks_cluster_id = aws_eks_cluster.main.id
-
-# region = var.region
-
-# prefix_tag_name = var.prefix_tag_name
-
-# eks_endpoint = aws_eks_cluster.main.endpoint
-
-# ca_data =aws_eks_cluster.main.certificate_authority[0].data
-
+#   ca_data =aws_eks_cluster.main.certificate_authority[0].data
 # }
 
 ###########################################################
@@ -404,3 +367,43 @@ module "content-path-routing" {
 #   ca_data = aws_eks_cluster.main.certificate_authority[0].data
 
 # }
+
+###########################################################
+#          EKS Ingress Content Path Routing + SSL
+###########################################################
+# module "content-path-routing" {
+#   source = "./subs/content-path-routing"
+
+#   lb_name = "ingress-cpr"
+#   domain_name = "oncloud.ae"
+
+#   acm_arn = var.acm_arn
+
+#   eks_cluster_id = aws_eks_cluster.main.id
+#   eks_endpoint = aws_eks_cluster.main.endpoint
+#   ca_data =aws_eks_cluster.main.certificate_authority[0].data
+
+# } 
+
+###########################################################
+#          EKS Cluster Auto Scaler
+###########################################################
+
+# module "cluster-autoscaler" {
+#   source = "./subs/cluster-autoscaler"
+
+# aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
+# aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
+
+# eks_cluster_id = aws_eks_cluster.main.id
+
+# region = var.region
+
+# prefix_tag_name = var.prefix_tag_name
+
+# eks_endpoint = aws_eks_cluster.main.endpoint
+
+# ca_data =aws_eks_cluster.main.certificate_authority[0].data
+
+# }
+

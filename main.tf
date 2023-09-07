@@ -34,6 +34,11 @@ module "vpc" {
 
 # }
 
+# module "acm" {
+#   domain_name = "oncloud.ae"
+#   subject_alternative_names = ["*.oncloud.ae"]
+# }
+
 module "eks" {
   source = "./modules/eks"
   cluster_name = var.cluster_name
@@ -54,6 +59,7 @@ module "eks" {
 
   region = var.region
 
+  acm_arn = var.acm_arn  
 }
 
 

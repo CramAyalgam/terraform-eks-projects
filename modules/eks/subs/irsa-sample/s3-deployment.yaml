@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: s3-deployment
+  name: s3-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s3-deployment
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: s3-deployment
+    spec:
+      serviceAccountName: s3readonly
+      containers:
+      - image: amazon/aws-cli:latest
+        name: aws-cli
+        args: ["s3", "ls"]
+        resources: {}
+status: {}

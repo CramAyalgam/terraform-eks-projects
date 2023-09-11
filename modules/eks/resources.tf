@@ -274,8 +274,11 @@ resource "aws_iam_openid_connect_provider" "oidc_provider" {
 
 # Sample Outputs for Reference
 /*
+
 aws_iam_openid_connect_provider_arn = "arn:aws:iam::180789647333:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/A9DED4A4FA341C2A5D985A260650F232"
+
 aws_iam_openid_connect_provider_extract_from_arn = "oidc.eks.us-east-1.amazonaws.com/id/A9DED4A4FA341C2A5D985A260650F232"
+element(split("oidc-provider/", "${aws_iam_openid_connect_provider.oidc_provider.arn}"), 1)
 */
 
 ###########################################################
@@ -389,21 +392,31 @@ resource "aws_iam_role_policy_attachment" "lbc_iam_role_policy_attach" {
 #          EKS Cluster Auto Scaler
 ###########################################################
 
-# module "cluster-autoscaler" {
-#   source = "./subs/cluster-autoscaler"
+module "cluster-autoscaler" {
+  source = "./subs/cluster-autoscaler"
 
-# aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
-# aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
+aws_iam_openid_connect_provider_arn = local.aws_iam_oidc_connect_provider_arn
+aws_iam_openid_connect_provider_extract_from_arn = local.aws_iam_oidc_connect_provider_extract_from_arn
 
-# eks_cluster_id = aws_eks_cluster.main.id
+eks_cluster_id = aws_eks_cluster.main.id
 
-# region = var.region
+region = var.region
 
-# prefix_tag_name = var.prefix_tag_name
+prefix_tag_name = var.prefix_tag_name
 
-# eks_endpoint = aws_eks_cluster.main.endpoint
+eks_endpoint = aws_eks_cluster.main.endpoint
 
-# ca_data =aws_eks_cluster.main.certificate_authority[0].data
+ca_data =aws_eks_cluster.main.certificate_authority[0].data
+
+}
+
+###########################################################
+#          EKS Sample IRSA - S3
+###########################################################
+
+# module "irsa-s3" {
+#   source = "./subs/irsa-sample"
+
+  
 
 # }
-

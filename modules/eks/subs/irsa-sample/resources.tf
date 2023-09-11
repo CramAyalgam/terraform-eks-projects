@@ -31,6 +31,14 @@
 #     ]
 #   })
 
+/*
+
+oidc.eks.me-central-1.amazonaws.com/id/C2E61EA151A16C2B8CF87847E712790B
+arn:aws:iam::038540414823:oidc-provider/oidc.eks.me-central-1.amazonaws.com/id/C2E61EA151A16C2B8CF87847E712790B
+
+*/
+
+
 #   tags = {
 #     tag-key = "${var.prefix_tag_name}-irsa-iam-role"
 #   }
